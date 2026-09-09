@@ -334,7 +334,7 @@ fn format_description_coverage() {
     assert_eq!(
         format_description!("[ignore count:2]"),
         &[BorrowedFormatItem::Component(Component::Ignore(
-            Ignore::count(const { NonZero::new(2).unwrap() })
+            Ignore::count(const { NonZero::new(2).expect("two is nonzero") })
         ))]
     );
     assert_eq!(

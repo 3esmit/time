@@ -4,8 +4,6 @@
 
 use core::num::NonZero;
 
-use num_conv::prelude::*;
-
 use crate::parsing::ParsedItem;
 use crate::parsing::combinator::{ExactlyNDigits, Sign, any_digit, sign};
 use crate::{Month, Weekday};
@@ -69,19 +67,19 @@ impl ExtendedKind {
 pub(crate) fn year(input: &[u8]) -> Option<ParsedItem<'_, i32>> {
     Some(match sign(input) {
         Some(ParsedItem(input, sign)) => ExactlyNDigits::<6>::parse(input)?.map(|val| {
-            let val = val.cast_signed();
+            let val = val as i32;
             match sign {
                 Sign::Negative => -val,
                 Sign::Positive => val,
             }
         }),
-        None => ExactlyNDigits::<4>::parse(input)?.map(|val| val.cast_signed().extend()),
+        None => ExactlyNDigits::<4>::parse(input)?.map(|val| i32::from(val as i16)),
     })
 }
 
 /// Parse a month.
 #[inline]
-pub(crate) fn month(input: &[u8]) -> Option<ParsedItem<'_, Month>> {
+pub(crate) const fn month(input: &[u8]) -> Option<ParsedItem<'_, Month>> {
     match input {
         [b'0', b'1', remaining @ ..] => Some(ParsedItem(remaining, Month::January)),
         [b'0', b'2', remaining @ ..] => Some(ParsedItem(remaining, Month::February)),
@@ -113,7 +111,7 @@ pub(crate) fn day(input: &[u8]) -> Option<ParsedItem<'_, NonZero<u8>>> {
 
 /// Parse a day of the week.
 #[inline]
-pub(crate) fn dayk(input: &[u8]) -> Option<ParsedItem<'_, Weekday>> {
+pub(crate) const fn dayk(input: &[u8]) -> Option<ParsedItem<'_, Weekday>> {
     match input {
         [b'1', remaining @ ..] => Some(ParsedItem(remaining, Weekday::Monday)),
         [b'2', remaining @ ..] => Some(ParsedItem(remaining, Weekday::Tuesday)),
@@ -183,7 +181,7 @@ pub(crate) fn float(input: &[u8]) -> Option<ParsedItem<'_, (u8, Option<f64>)>> {
 
 /// Parse a "decimal sign", which is either a comma or a period.
 #[inline]
-fn decimal_sign(input: &[u8]) -> Option<ParsedItem<'_, ()>> {
+const fn decimal_sign(input: &[u8]) -> Option<ParsedItem<'_, ()>> {
     match input {
         [b'.' | b',', remaining @ ..] => Some(ParsedItem(remaining, ())),
         _ => None,

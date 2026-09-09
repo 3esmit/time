@@ -71,7 +71,7 @@ impl SystemTimeExt for SystemTime {
                     Ok(seconds) => -seconds,
                     Err(_) => return Duration::MIN,
                 };
-                let nanoseconds = -err.duration().subsec_nanos().cast_signed();
+                let nanoseconds = -(err.duration().subsec_nanos() as i32);
 
                 // Safety: `nanoseconds` is guaranteed to be between -999_999_999 and 0
                 // inclusive.

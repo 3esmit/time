@@ -1,6 +1,6 @@
 # time
 
-[![minimum rustc: 1.88.0](https://img.shields.io/badge/minimum%20rustc-1.88.0-yellowgreen?logo=rust&style=flat-square)](https://www.whatrustisit.com)
+[![minimum rustc: 1.85.0](https://img.shields.io/badge/minimum%20rustc-1.85.0-yellowgreen?logo=rust&style=flat-square)](https://www.whatrustisit.com)
 [![version](https://img.shields.io/crates/v/time?color=blue&logo=rust&style=flat-square)](https://crates.io/crates/time)
 [![build status](https://img.shields.io/github/actions/workflow/status/time-rs/time/build.yaml?branch=main&style=flat-square)](https://github.com/time-rs/time/actions)
 [![codecov](https://codecov.io/gh/time-rs/time/branch/main/graph/badge.svg?token=yt4XSmQNKQ)](https://codecov.io/gh/time-rs/time)
@@ -10,6 +10,16 @@ Documentation:
 - [latest release](https://docs.rs/time)
 - [main branch](https://time-rs.github.io/api/time)
 - [book](https://time-rs.github.io/book)
+
+## Rust 1.85 compatibility branch
+
+This branch ports the complete upstream 0.3.47 release to Rust 1.85, retaining its RFC 2822
+comment-depth limit. Macro diagnostics preserve precise spans on Rust 1.88 and newer; older
+compilers highlight the offending tokens. Unsigned duration scalars are converted losslessly before
+multiplication and division, including values above the corresponding signed integer maximum.
+
+These changes belong to this fork branch, not the registry release. The upstream version policy
+below describes the main project.
 
 ## Minimum Rust version policy
 

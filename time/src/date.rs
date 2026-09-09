@@ -10,7 +10,6 @@ use core::{cmp, fmt};
 use std::io;
 
 use deranged::RangedI32;
-use num_conv::prelude::*;
 use powerfmt::ext::FormatterExt;
 use powerfmt::smart_display::{self, FormatterOptions, Metadata, SmartDisplay};
 
@@ -67,21 +66,27 @@ impl Date {
     }
 
     /// The Unix epoch: 1970-01-01
-    // Safety: `ordinal` is not zero.
-    pub(crate) const UNIX_EPOCH: Self = unsafe { Self::__from_ordinal_date_unchecked(1970, 1) };
+    pub(crate) const UNIX_EPOCH: Self = {
+        // Safety: 1970 is a supported year and ordinal 1 is its first day.
+        unsafe { Self::__from_ordinal_date_unchecked(1970, 1) }
+    };
 
     /// The minimum valid `Date`.
     ///
     /// The value of this may vary depending on the feature flags enabled.
-    // Safety: `ordinal` is not zero.
-    pub const MIN: Self = unsafe { Self::__from_ordinal_date_unchecked(MIN_YEAR, 1) };
+    pub const MIN: Self = {
+        // Safety: MIN_YEAR is the supported lower bound and ordinal 1 is its first day.
+        unsafe { Self::__from_ordinal_date_unchecked(MIN_YEAR, 1) }
+    };
 
     /// The maximum valid `Date`.
     ///
     /// The value of this may vary depending on the feature flags enabled.
-    // Safety: `ordinal` is not zero.
-    pub const MAX: Self = unsafe {
-        Self::__from_ordinal_date_unchecked(MAX_YEAR, range_validated::days_in_year(MAX_YEAR))
+    pub const MAX: Self = {
+        // Safety: MAX_YEAR is supported and days_in_year gives its final nonzero ordinal.
+        unsafe {
+            Self::__from_ordinal_date_unchecked(MAX_YEAR, range_validated::days_in_year(MAX_YEAR))
+        }
     };
 
     /// Construct a `Date` from its internal representation, the validity of which must be
@@ -247,16 +252,16 @@ impl Date {
             return Ok(unsafe {
                 Self::__from_ordinal_date_unchecked(
                     year - 1,
-                    ordinal
-                        .cast_unsigned()
-                        .wrapping_add(range_validated::days_in_year(year - 1)),
+                    // Preserve the i16 bit pattern before the wrapping addition: a negative
+                    // ordinal denotes one of the final days of the preceding year.
+                    (ordinal as u16).wrapping_add(range_validated::days_in_year(year - 1)),
                 )
             });
         }
 
         let is_leap_year = range_validated::is_leap_year(year);
         let days_in_year = if is_leap_year { 366 } else { 365 };
-        let ordinal = ordinal.cast_unsigned();
+        let ordinal = ordinal as u16;
         Ok(if ordinal > days_in_year {
             // Safety: `ordinal` is not zero.
             unsafe { Self::__from_ordinal_date_unchecked(year + 1, ordinal - days_in_year) }
@@ -306,19 +311,20 @@ impl Date {
         const JUL_MUL: u32 = ((4u64 << 40) / 1_461 + 1) as u32;
         const CEN_CUT: u32 = ((365u64 << 32) / 36_525) as u32;
 
-        let day = julian_day.cast_unsigned().wrapping_add(D_SHIFT);
+        // The algorithm deliberately shifts the signed Julian day in u32 wrapping arithmetic.
+        let day = (julian_day as u32).wrapping_add(D_SHIFT);
         let c_n = (day as u64 * CEN_MUL as u64) >> 15;
         let cen = (c_n >> 32) as u32;
         let cpt = c_n as u32;
-        let ijy = cpt > CEN_CUT || cen.is_multiple_of(4);
+        let ijy = cpt > CEN_CUT || cen % 4 == 0;
         let jul = day - cen / 4 + cen;
         let y_n = (jul as u64 * JUL_MUL as u64) >> 8;
         let yrs = (y_n >> 32) as u32;
         let ypt = y_n as u32;
 
-        let year = yrs.wrapping_sub(Y_SHIFT).cast_signed();
+        let year = yrs.wrapping_sub(Y_SHIFT) as i32;
         let ordinal = ((ypt as u64 * 1_461) >> 34) as u32 + ijy as u32;
-        let leap = yrs.is_multiple_of(4) & ijy;
+        let leap = (yrs % 4 == 0) & ijy;
 
         // Safety: `ordinal` is not zero and `is_leap_year` is correct, so long as the Julian day
         // number is in range, which is guaranteed by the caller.
@@ -460,8 +466,7 @@ impl Date {
     /// ```
     #[inline]
     pub const fn sunday_based_week(self) -> u8 {
-        ((self.ordinal().cast_signed() - self.weekday().number_days_from_sunday() as i16 + 6) / 7)
-            as u8
+        ((self.ordinal() as i16 - self.weekday().number_days_from_sunday() as i16 + 6) / 7) as u8
     }
 
     /// Get the week number where week 1 begins on the first Monday.
@@ -477,8 +482,7 @@ impl Date {
     /// ```
     #[inline]
     pub const fn monday_based_week(self) -> u8 {
-        ((self.ordinal().cast_signed() - self.weekday().number_days_from_monday() as i16 + 6) / 7)
-            as u8
+        ((self.ordinal() as i16 - self.weekday().number_days_from_monday() as i16 + 6) / 7) as u8
     }
 
     /// Get the year, month, and day.
@@ -1223,7 +1227,7 @@ impl Date {
             Self::from_parts(
                 self.year(),
                 is_leap_year,
-                (self.ordinal().cast_signed() - self.day() as i16 + day as i16).cast_unsigned(),
+                (self.ordinal() as i16 - self.day() as i16 + day as i16) as u16,
             )
         })
     }
@@ -1447,7 +1451,7 @@ impl SmartDisplay for Date {
             false
         };
 
-        let formatted_width = year_width.extend::<usize>()
+        let formatted_width = usize::from(year_width)
             + smart_display::padded_width_of!(
                 "-",
                 u8::from(month) => width(2),
@@ -1481,7 +1485,7 @@ impl SmartDisplay for Date {
             month,
             day,
         } = *metadata;
-        let year_width = year_width.extend();
+        let year_width = usize::from(year_width);
 
         if display_sign {
             f.pad_with_width(
@@ -1616,6 +1620,6 @@ impl Sub for Date {
 
     #[inline]
     fn sub(self, other: Self) -> Self::Output {
-        Duration::days((self.to_julian_day() - other.to_julian_day()).extend())
+        Duration::days(i64::from(self.to_julian_day() - other.to_julian_day()))
     }
 }

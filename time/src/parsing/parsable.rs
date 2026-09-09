@@ -3,8 +3,6 @@
 use core::num::NonZero;
 use core::ops::Deref;
 
-use num_conv::prelude::*;
-
 use crate::error::ParseFromDescription::{InvalidComponent, InvalidLiteral};
 use crate::error::TryFromParsed;
 #[cfg(feature = "alloc")]
@@ -223,9 +221,7 @@ impl sealed::Sealed for Rfc2822 {
                 let input = try_likely_ok!(
                     item.flat_map(|year| if year >= 1900 { Some(year) } else { None })
                         .and_then(|item| {
-                            item.consume_value(|value| {
-                                parsed.set_year(value.cast_signed().extend())
-                            })
+                            item.consume_value(|value| parsed.set_year(i32::from(value as i16)))
                         })
                         .ok_or(InvalidComponent("year"))
                 );
@@ -235,9 +231,9 @@ impl sealed::Sealed for Rfc2822 {
                 let input = try_likely_ok!(
                     ExactlyNDigits::<2>::parse(input)
                         .and_then(|item| {
-                            item.map(|year| year.extend::<u32>())
+                            item.map(u32::from)
                                 .map(|year| if year < 50 { year + 2000 } else { year + 1900 })
-                                .map(|year| year.cast_signed())
+                                .map(|year| year as i32)
                                 .consume_value(|value| parsed.set_year(value))
                         })
                         .ok_or(InvalidComponent("year"))
@@ -301,8 +297,8 @@ impl sealed::Sealed for Rfc2822 {
             ExactlyNDigits::<2>::parse(input)
                 .and_then(|item| {
                     item.map(|offset_hour| match offset_sign {
-                        Sign::Negative => -offset_hour.cast_signed(),
-                        Sign::Positive => offset_hour.cast_signed(),
+                        Sign::Negative => -(offset_hour as i8),
+                        Sign::Positive => offset_hour as i8,
                     })
                     .consume_value(|value| parsed.set_offset_hour(value))
                 })
@@ -311,7 +307,7 @@ impl sealed::Sealed for Rfc2822 {
         let input = try_likely_ok!(
             ExactlyNDigits::<2>::parse(input)
                 .and_then(|item| {
-                    item.consume_value(|value| parsed.set_offset_minute_signed(value.cast_signed()))
+                    item.consume_value(|value| parsed.set_offset_minute_signed(value as i8))
                 })
                 .ok_or(InvalidComponent("offset minute"))
         );
@@ -371,7 +367,7 @@ impl sealed::Sealed for Rfc2822 {
                 let ParsedItem(input, year) = try_likely_ok!(
                     ExactlyNDigits::<2>::parse(input)
                         .map(|item| {
-                            item.map(|year| year.extend::<u16>())
+                            item.map(u16::from)
                                 .map(|year| if year < 50 { year + 2000 } else { year + 1900 })
                         })
                         .ok_or(InvalidComponent("year"))
@@ -413,8 +409,8 @@ impl sealed::Sealed for Rfc2822 {
                 ExactlyNDigits::<2>::parse(input)
                     .map(|item| {
                         item.map(|offset_hour| match offset_sign {
-                            Sign::Negative => -offset_hour.cast_signed(),
-                            Sign::Positive => offset_hour.cast_signed(),
+                            Sign::Negative => -(offset_hour as i8),
+                            Sign::Positive => offset_hour as i8,
                         })
                     })
                     .ok_or(InvalidComponent("offset hour"))
@@ -422,7 +418,7 @@ impl sealed::Sealed for Rfc2822 {
             let ParsedItem(input, offset_minute) = try_likely_ok!(
                 ExactlyNDigits::<2>::parse(input).ok_or(InvalidComponent("offset minute"))
             );
-            (input, offset_hour, offset_minute.cast_signed())
+            (input, offset_hour, (offset_minute as i8))
         };
 
         let input = opt(cfws)(input).into_inner();
@@ -444,11 +440,8 @@ impl sealed::Sealed for Rfc2822 {
 
         let dt = try_likely_ok!(
             (|| {
-                let date = try_likely_ok!(Date::from_calendar_date(
-                    year.cast_signed().extend(),
-                    month,
-                    day
-                ));
+                let date =
+                    try_likely_ok!(Date::from_calendar_date(i32::from(year as i16), month, day));
                 let time = try_likely_ok!(Time::from_hms_nano(hour, minute, second, nanosecond));
                 let offset = try_likely_ok!(UtcOffset::from_hms(offset_hour, offset_minute, 0));
                 Ok(OffsetDateTime::new_in_offset(date, time, offset))
@@ -478,7 +471,7 @@ impl sealed::Sealed for Rfc3339 {
         let input = try_likely_ok!(
             ExactlyNDigits::<4>::parse(input)
                 .and_then(|item| {
-                    item.consume_value(|value| parsed.set_year(value.cast_signed().extend()))
+                    item.consume_value(|value| parsed.set_year(i32::from(value as i16)))
                 })
                 .ok_or(InvalidComponent("year"))
         );
@@ -527,11 +520,11 @@ impl sealed::Sealed for Rfc3339 {
         let input = if let Some(ParsedItem(input, ())) = ascii_char::<b'.'>(input) {
             let ParsedItem(mut input, mut value) =
                 try_likely_ok!(any_digit(input).ok_or(InvalidComponent("subsecond")))
-                    .map(|v| (v - b'0').extend::<u32>() * 100_000_000);
+                    .map(|v| u32::from(v - b'0') * 100_000_000);
 
             let mut multiplier = 10_000_000;
             while let Some(ParsedItem(new_input, digit)) = any_digit(input) {
-                value += (digit - b'0').extend::<u32>() * multiplier;
+                value += u32::from(digit - b'0') * multiplier;
                 input = new_input;
                 multiplier /= 10;
             }
@@ -575,8 +568,8 @@ impl sealed::Sealed for Rfc3339 {
                 .and_then(|item| {
                     item.filter(|&offset_hour| offset_hour <= 23)?
                         .map(|offset_hour| match offset_sign {
-                            Sign::Negative => -offset_hour.cast_signed(),
-                            Sign::Positive => offset_hour.cast_signed(),
+                            Sign::Negative => -(offset_hour as i8),
+                            Sign::Positive => offset_hour as i8,
                         })
                         .consume_value(|value| parsed.set_offset_hour(value))
                 })
@@ -587,8 +580,8 @@ impl sealed::Sealed for Rfc3339 {
             ExactlyNDigits::<2>::parse(input)
                 .and_then(|item| {
                     item.map(|offset_minute| match offset_sign {
-                        Sign::Negative => -offset_minute.cast_signed(),
-                        Sign::Positive => offset_minute.cast_signed(),
+                        Sign::Negative => -(offset_minute as i8),
+                        Sign::Positive => offset_minute as i8,
                     })
                     .consume_value(|value| parsed.set_offset_minute_signed(value))
                 })
@@ -635,11 +628,11 @@ impl sealed::Sealed for Rfc3339 {
             if let Some(ParsedItem(input, ())) = ascii_char::<b'.'>(input) {
                 let ParsedItem(mut input, mut value) =
                     try_likely_ok!(any_digit(input).ok_or(InvalidComponent("subsecond")))
-                        .map(|v| (v - b'0').extend::<u32>() * 100_000_000);
+                        .map(|v| u32::from(v - b'0') * 100_000_000);
 
                 let mut multiplier = 10_000_000;
                 while let Some(ParsedItem(new_input, digit)) = any_digit(input) {
-                    value += (digit - b'0').extend::<u32>() * multiplier;
+                    value += u32::from(digit - b'0') * multiplier;
                     input = new_input;
                     multiplier /= 10;
                 }
@@ -665,16 +658,10 @@ impl sealed::Sealed for Rfc3339 {
                 );
                 try_likely_ok!(
                     match offset_sign {
-                        Sign::Negative => UtcOffset::from_hms(
-                            -offset_hour.cast_signed(),
-                            -offset_minute.cast_signed(),
-                            0,
-                        ),
-                        Sign::Positive => UtcOffset::from_hms(
-                            offset_hour.cast_signed(),
-                            offset_minute.cast_signed(),
-                            0,
-                        ),
+                        Sign::Negative =>
+                            UtcOffset::from_hms(-(offset_hour as i8), -(offset_minute as i8), 0,),
+                        Sign::Positive =>
+                            UtcOffset::from_hms(offset_hour as i8, offset_minute as i8, 0,),
                     }
                     .map(|offset| ParsedItem(input, offset))
                     .map_err(TryFromParsed::ComponentRange)
@@ -701,7 +688,7 @@ impl sealed::Sealed for Rfc3339 {
 
         let date = try_likely_ok!(
             Month::from_number(month)
-                .and_then(|month| Date::from_calendar_date(year.cast_signed().extend(), month, day))
+                .and_then(|month| Date::from_calendar_date(i32::from(year as i16), month, day))
                 .map_err(TryFromParsed::ComponentRange)
         );
         let time = try_likely_ok!(

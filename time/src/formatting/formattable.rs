@@ -5,8 +5,6 @@ use alloc::vec::Vec;
 use core::ops::Deref;
 use std::io;
 
-use num_conv::prelude::*;
-
 use crate::error;
 use crate::format_description::well_known::iso8601::EncodedConfig;
 use crate::format_description::well_known::{Iso8601, Rfc2822, Rfc3339};
@@ -20,8 +18,9 @@ use crate::formatting::{
 ///
 /// Implementors of [`Formattable`] are [format descriptions](crate::format_description).
 ///
-/// [`Date::format`] and [`Time::format`] each use a format description to generate
-/// a String from their data. See the respective methods for usage examples.
+/// [`Date::format`](crate::Date::format) and [`Time::format`](crate::Time::format) each use a
+/// format description to generate a String from their data. See the respective methods for usage
+/// examples.
 #[cfg_attr(docsrs, doc(notable_trait))]
 pub trait Formattable: sealed::Sealed {}
 impl Formattable for BorrowedFormatItem<'_> {}
@@ -231,21 +230,18 @@ impl sealed::Sealed for Rfc2822 {
 
         // Safety: All weekday names are at least 3 bytes long.
         bytes += write(output, unsafe {
-            WEEKDAY_NAMES[value
-                .weekday(state)
-                .number_days_from_monday()
-                .extend::<usize>()]
-            .get_unchecked(..3)
+            WEEKDAY_NAMES[usize::from(value.weekday(state).number_days_from_monday())]
+                .get_unchecked(..3)
         })?;
         bytes += write(output, b", ")?;
         bytes += format_number_pad_zero::<2>(output, value.day(state))?;
         bytes += write(output, b" ")?;
         // Safety: All month names are at least 3 bytes long.
         bytes += write(output, unsafe {
-            MONTH_NAMES[u8::from(value.month(state)).extend::<usize>() - 1].get_unchecked(..3)
+            MONTH_NAMES[usize::from(u8::from(value.month(state))) - 1].get_unchecked(..3)
         })?;
         bytes += write(output, b" ")?;
-        bytes += format_number_pad_zero::<4>(output, value.calendar_year(state).cast_unsigned())?;
+        bytes += format_number_pad_zero::<4>(output, value.calendar_year(state) as u32)?;
         bytes += write(output, b" ")?;
         bytes += format_number_pad_zero::<2>(output, value.hour(state))?;
         bytes += write(output, b":")?;
@@ -297,7 +293,7 @@ impl sealed::Sealed for Rfc3339 {
             return Err(error::Format::InvalidComponent("offset_second"));
         }
 
-        bytes += format_number_pad_zero::<4>(output, value.calendar_year(state).cast_unsigned())?;
+        bytes += format_number_pad_zero::<4>(output, value.calendar_year(state) as u32)?;
         bytes += write(output, b"-")?;
         bytes += format_number_pad_zero::<2>(output, u8::from(value.month(state)))?;
         bytes += write(output, b"-")?;

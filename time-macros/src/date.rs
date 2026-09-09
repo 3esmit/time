@@ -5,7 +5,9 @@ use proc_macro::token_stream;
 use time_core::util::{days_in_year, weeks_in_year};
 
 use crate::Error;
-use crate::helpers::{consume_number, consume_punct, days_in_year_month, ymd_to_yo, ywd_to_yo};
+use crate::helpers::{
+    consume_number, consume_punct, days_in_year_month, span_end, span_start, ymd_to_yo, ywd_to_yo,
+};
 use crate::to_tokens::ToTokenStream;
 
 #[cfg(feature = "large-dates")]
@@ -32,26 +34,29 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
         return Err(Error::InvalidComponent {
             name: "year",
             value: year.to_string(),
-            span_start: Some(year_sign_span.unwrap_or_else(|| year_span.start())),
-            span_end: Some(year_span.end()),
+            span_start: Some(year_sign_span.unwrap_or_else(|| span_start(year_span))),
+            span_end: Some(span_end(year_span)),
         });
     }
     if !explicit_sign && year.abs() >= 10_000 {
         return Err(Error::Custom {
             message: "years with more than four digits must have an explicit sign".into(),
-            span_start: Some(year_sign_span.unwrap_or_else(|| year_span.start())),
-            span_end: Some(year_span.end()),
+            span_start: Some(year_sign_span.unwrap_or_else(|| span_start(year_span))),
+            span_end: Some(span_end(year_span)),
         });
     }
 
     consume_punct('-', chars)?;
 
     // year-week-day
-    if let Some(proc_macro::TokenTree::Ident(ident)) = chars.peek()
-        && let s = ident.to_string()
-        && s.starts_with('W')
-    {
-        let w_span = ident.span();
+    let week_ident = match chars.peek() {
+        Some(proc_macro::TokenTree::Ident(ident)) => {
+            let text = ident.to_string();
+            text.starts_with('W').then(|| (ident.span(), text))
+        }
+        _ => None,
+    };
+    if let Some((w_span, s)) = week_ident {
         drop(chars.next()); // consume 'W' and possibly the week number
 
         let (week_span, week, day_span, day);
@@ -62,9 +67,12 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
             (day_span, day) = consume_number::<u8>("day", chars)?;
         } else {
             let presumptive_week = &s[1..];
-            if presumptive_week.bytes().all(|d| d.is_ascii_digit())
-                && let Ok(week_number) = presumptive_week.replace('_', "").parse()
-            {
+            let week_number = if presumptive_week.bytes().all(|d| d.is_ascii_digit()) {
+                presumptive_week.replace('_', "").parse().ok()
+            } else {
+                None
+            };
+            if let Some(week_number) = week_number {
                 (week_span, week) = (w_span, week_number);
                 consume_punct('-', chars)?;
                 (day_span, day) = consume_number::<u8>("day", chars)?;
@@ -72,8 +80,8 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
                 return Err(Error::InvalidComponent {
                     name: "week",
                     value: presumptive_week.to_string(),
-                    span_start: Some(w_span.start()),
-                    span_end: Some(w_span.end()),
+                    span_start: Some(span_start(w_span)),
+                    span_end: Some(span_end(w_span)),
                 });
             }
         };
@@ -82,16 +90,16 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
             return Err(Error::InvalidComponent {
                 name: "week",
                 value: week.to_string(),
-                span_start: Some(w_span.start()),
-                span_end: Some(week_span.end()),
+                span_start: Some(span_start(w_span)),
+                span_end: Some(span_end(week_span)),
             });
         }
         if day == 0 || day > 7 {
             return Err(Error::InvalidComponent {
                 name: "day",
                 value: day.to_string(),
-                span_start: Some(day_span.start()),
-                span_end: Some(day_span.end()),
+                span_start: Some(span_start(day_span)),
+                span_end: Some(span_end(day_span)),
             });
         }
 
@@ -113,8 +121,8 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
             return Err(Error::InvalidComponent {
                 name: "month",
                 value: month.to_string(),
-                span_start: Some(month_span.start()),
-                span_end: Some(month_span.end()),
+                span_start: Some(span_start(month_span)),
+                span_end: Some(span_end(month_span)),
             });
         }
         let month = month.truncate();
@@ -122,8 +130,8 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
             return Err(Error::InvalidComponent {
                 name: "day",
                 value: day.to_string(),
-                span_start: Some(day_span.start()),
-                span_end: Some(day_span.end()),
+                span_start: Some(span_start(day_span)),
+                span_end: Some(span_end(day_span)),
             });
         }
 
@@ -139,8 +147,8 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Date
             return Err(Error::InvalidComponent {
                 name: "ordinal",
                 value: ordinal.to_string(),
-                span_start: Some(ordinal_span.start()),
-                span_end: Some(ordinal_span.end()),
+                span_start: Some(span_start(ordinal_span)),
+                span_end: Some(span_end(ordinal_span)),
             });
         }
 

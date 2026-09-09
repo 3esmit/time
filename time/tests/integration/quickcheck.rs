@@ -1,4 +1,3 @@
-use num_conv::prelude::*;
 use quickcheck::{Arbitrary, TestResult};
 use quickcheck_macros::quickcheck;
 use time::macros::{format_description, time};
@@ -325,12 +324,12 @@ fn odt_to_offset_no_panic(odt: OffsetDateTime, offset: UtcOffset) -> TestResult 
     if Date::MIN
         .midnight()
         .assume_utc()
-        .checked_add(Duration::seconds(offset_difference.extend()))
+        .checked_add(Duration::seconds(i64::from(offset_difference)))
         .is_none()
         || Date::MAX
             .with_time(time!(23:59:59.999_999_999))
             .assume_utc()
-            .checked_add(Duration::seconds(offset_difference.extend()))
+            .checked_add(Duration::seconds(i64::from(offset_difference)))
             .is_none()
     {
         return TestResult::discard();
@@ -346,12 +345,12 @@ fn odt_replace_offset_no_panic(odt: OffsetDateTime, offset: UtcOffset) -> TestRe
     if Date::MIN
         .midnight()
         .assume_offset(odt.offset())
-        .checked_add(Duration::seconds(offset.whole_seconds().extend()))
+        .checked_add(Duration::seconds(i64::from(offset.whole_seconds())))
         .is_none()
         || Date::MAX
             .with_time(time!(23:59:59.999_999_999))
             .assume_offset(odt.offset())
-            .checked_add(Duration::seconds(offset.whole_seconds().extend()))
+            .checked_add(Duration::seconds(i64::from(offset.whole_seconds())))
             .is_none()
     {
         return TestResult::discard();

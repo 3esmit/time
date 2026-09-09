@@ -34,8 +34,8 @@ pub(crate) fn parse_year(
                 Some(ParsedItem(
                     input,
                     match sign {
-                        Sign::Negative => (-year.cast_signed(), true),
-                        Sign::Positive => (year.cast_signed(), false),
+                        Sign::Negative => (-(year as i32), true),
+                        Sign::Positive => ((year as i32), false),
                     },
                 ))
             } else if modifiers.sign_is_mandatory {
@@ -43,7 +43,7 @@ pub(crate) fn parse_year(
             } else {
                 let ParsedItem(input, year) =
                     exactly_n_digits_padded::<4, u32>(modifiers.padding)(input)?;
-                Some(ParsedItem(input, (year.cast_signed(), false)))
+                Some(ParsedItem(input, ((year as i32), false)))
             }
         }
         modifier::YearRepr::Century => {
@@ -61,8 +61,8 @@ pub(crate) fn parse_year(
                 Some(ParsedItem(
                     input,
                     match sign {
-                        Sign::Negative => (-year.cast_signed(), true),
-                        Sign::Positive => (year.cast_signed(), false),
+                        Sign::Negative => (-(year as i32), true),
+                        Sign::Positive => ((year as i32), false),
                     },
                 ))
             } else if modifiers.sign_is_mandatory {
@@ -70,12 +70,12 @@ pub(crate) fn parse_year(
             } else {
                 let ParsedItem(input, year) =
                     n_to_m_digits_padded::<1, 2, u32>(modifiers.padding)(input)?;
-                Some(ParsedItem(input, (year.cast_signed(), false)))
+                Some(ParsedItem(input, ((year as i32), false)))
             }
         }
         modifier::YearRepr::LastTwo => Some(
             exactly_n_digits_padded::<2, u32>(modifiers.padding)(input)?
-                .map(|v| (v.cast_signed(), false)),
+                .map(|v| ((v as i32), false)),
         ),
     }
 }
@@ -121,18 +121,18 @@ pub(crate) fn parse_month(
                 u32::from_ne_bytes([0, b'D', b'e', b'c']),
             ];
 
-            let bitmask = ((WEEKDAYS[0] == byte) as u32) << 1
-                | ((WEEKDAYS[1] == byte) as u32) << 2
-                | ((WEEKDAYS[2] == byte) as u32) << 3
-                | ((WEEKDAYS[3] == byte) as u32) << 4
-                | ((WEEKDAYS[4] == byte) as u32) << 5
-                | ((WEEKDAYS[5] == byte) as u32) << 6
-                | ((WEEKDAYS[6] == byte) as u32) << 7
-                | ((WEEKDAYS[7] == byte) as u32) << 8
-                | ((WEEKDAYS[8] == byte) as u32) << 9
-                | ((WEEKDAYS[9] == byte) as u32) << 10
-                | ((WEEKDAYS[10] == byte) as u32) << 11
-                | ((WEEKDAYS[11] == byte) as u32) << 12;
+            let bitmask = (((WEEKDAYS[0] == byte) as u32) << 1)
+                | (((WEEKDAYS[1] == byte) as u32) << 2)
+                | (((WEEKDAYS[2] == byte) as u32) << 3)
+                | (((WEEKDAYS[3] == byte) as u32) << 4)
+                | (((WEEKDAYS[4] == byte) as u32) << 5)
+                | (((WEEKDAYS[5] == byte) as u32) << 6)
+                | (((WEEKDAYS[6] == byte) as u32) << 7)
+                | (((WEEKDAYS[7] == byte) as u32) << 8)
+                | (((WEEKDAYS[8] == byte) as u32) << 9)
+                | (((WEEKDAYS[9] == byte) as u32) << 10)
+                | (((WEEKDAYS[10] == byte) as u32) << 11)
+                | (((WEEKDAYS[11] == byte) as u32) << 12);
             if bitmask == 0 {
                 return None;
             }
@@ -220,12 +220,12 @@ pub(crate) fn parse_weekday(
             ];
 
             let bitmask = ((WEEKDAYS[0] == byte) as u32)
-                | ((WEEKDAYS[1] == byte) as u32) << 1
-                | ((WEEKDAYS[2] == byte) as u32) << 2
-                | ((WEEKDAYS[3] == byte) as u32) << 3
-                | ((WEEKDAYS[4] == byte) as u32) << 4
-                | ((WEEKDAYS[5] == byte) as u32) << 5
-                | ((WEEKDAYS[6] == byte) as u32) << 6;
+                | (((WEEKDAYS[1] == byte) as u32) << 1)
+                | (((WEEKDAYS[2] == byte) as u32) << 2)
+                | (((WEEKDAYS[3] == byte) as u32) << 3)
+                | (((WEEKDAYS[4] == byte) as u32) << 4)
+                | (((WEEKDAYS[5] == byte) as u32) << 5)
+                | (((WEEKDAYS[6] == byte) as u32) << 6);
             if bitmask == 0 {
                 return None;
             }
@@ -335,7 +335,7 @@ pub(crate) fn parse_second(
 
 /// Parse the "period" component of a `Time`. Required if the hour is on a 12-hour clock.
 #[inline]
-pub(crate) fn parse_period(
+pub(crate) const fn parse_period(
     input: &[u8],
     modifiers: modifier::Period,
 ) -> Option<ParsedItem<'_, Period>> {
@@ -370,10 +370,10 @@ pub(crate) fn parse_subsecond(
 ) -> Option<ParsedItem<'_, u32>> {
     use modifier::SubsecondDigits::*;
     Some(match modifiers.digits {
-        One => ExactlyNDigits::<1>::parse(input)?.map(|v| v.extend::<u32>() * 100_000_000),
-        Two => ExactlyNDigits::<2>::parse(input)?.map(|v| v.extend::<u32>() * 10_000_000),
-        Three => ExactlyNDigits::<3>::parse(input)?.map(|v| v.extend::<u32>() * 1_000_000),
-        Four => ExactlyNDigits::<4>::parse(input)?.map(|v| v.extend::<u32>() * 100_000),
+        One => ExactlyNDigits::<1>::parse(input)?.map(|v| u32::from(v) * 100_000_000),
+        Two => ExactlyNDigits::<2>::parse(input)?.map(|v| u32::from(v) * 10_000_000),
+        Three => ExactlyNDigits::<3>::parse(input)?.map(|v| u32::from(v) * 1_000_000),
+        Four => ExactlyNDigits::<4>::parse(input)?.map(|v| u32::from(v) * 100_000),
         Five => ExactlyNDigits::<5>::parse(input)?.map(|v| v * 10_000),
         Six => ExactlyNDigits::<6>::parse(input)?.map(|v| v * 1_000),
         Seven => ExactlyNDigits::<7>::parse(input)?.map(|v| v * 100),
@@ -381,11 +381,11 @@ pub(crate) fn parse_subsecond(
         Nine => ExactlyNDigits::<9>::parse(input)?,
         OneOrMore => {
             let ParsedItem(mut input, mut value) =
-                any_digit(input)?.map(|v| (v - b'0').extend::<u32>() * 100_000_000);
+                any_digit(input)?.map(|v| u32::from(v - b'0') * 100_000_000);
 
             let mut multiplier = 10_000_000;
             while let Some(ParsedItem(new_input, digit)) = any_digit(input) {
-                value += (digit - b'0').extend::<u32>() * multiplier;
+                value += u32::from(digit - b'0') * multiplier;
                 input = new_input;
                 multiplier /= 10;
             }
@@ -406,9 +406,9 @@ pub(crate) fn parse_offset_hour(
     let ParsedItem(input, sign) = opt(sign)(input);
     let ParsedItem(input, hour) = exactly_n_digits_padded::<2, u8>(modifiers.padding)(input)?;
     match sign {
-        Some(Sign::Negative) => Some(ParsedItem(input, (-hour.cast_signed(), true))),
+        Some(Sign::Negative) => Some(ParsedItem(input, (-(hour as i8), true))),
         None if modifiers.sign_is_mandatory => None,
-        _ => Some(ParsedItem(input, (hour.cast_signed(), false))),
+        _ => Some(ParsedItem(input, ((hour as i8), false))),
     }
 }
 
@@ -420,7 +420,7 @@ pub(crate) fn parse_offset_minute(
 ) -> Option<ParsedItem<'_, i8>> {
     Some(
         exactly_n_digits_padded::<2, u8>(modifiers.padding)(input)?
-            .map(|offset_minute| offset_minute.cast_signed()),
+            .map(|offset_minute| offset_minute as i8),
     )
 }
 
@@ -432,7 +432,7 @@ pub(crate) fn parse_offset_second(
 ) -> Option<ParsedItem<'_, i8>> {
     Some(
         exactly_n_digits_padded::<2, u8>(modifiers.padding)(input)?
-            .map(|offset_second| offset_second.cast_signed()),
+            .map(|offset_second| offset_second as i8),
     )
 }
 
@@ -443,7 +443,7 @@ pub(crate) fn parse_ignore(
     modifiers: modifier::Ignore,
 ) -> Option<ParsedItem<'_, ()>> {
     let modifier::Ignore { count } = modifiers;
-    let input = input.get((count.get().extend())..)?;
+    let input = input.get(usize::from(count.get())..)?;
     Some(ParsedItem(input, ()))
 }
 
@@ -465,9 +465,9 @@ pub(crate) fn parse_unix_timestamp(
     };
 
     match sign {
-        Some(Sign::Negative) => Some(ParsedItem(input, -nano_timestamp.cast_signed())),
+        Some(Sign::Negative) => Some(ParsedItem(input, -(nano_timestamp as i128))),
         None if modifiers.sign_is_mandatory => None,
-        _ => Some(ParsedItem(input, nano_timestamp.cast_signed())),
+        _ => Some(ParsedItem(input, nano_timestamp as i128)),
     }
 }
 

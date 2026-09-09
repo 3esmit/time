@@ -136,8 +136,8 @@ impl UtcOffset {
     /// reasons.
     #[inline]
     const fn as_i32_for_comparison(self) -> i32 {
-        (self.hours.get() as i32) << 16
-            | (self.minutes.get() as i32) << 8
+        ((self.hours.get() as i32) << 16)
+            | ((self.minutes.get() as i32) << 8)
             | (self.seconds.get() as i32)
     }
 

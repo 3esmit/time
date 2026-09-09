@@ -64,9 +64,8 @@ fn systemtime_to_filetime(systime: &SystemTime) -> Option<FileTime> {
 fn filetime_to_secs(filetime: &FileTime) -> i64 {
     /// FILETIME represents 100-nanosecond intervals
     const FT_TO_SECS: u64 = Nanosecond::per_t::<u64>(Second) / 100;
-    ((filetime.dwHighDateTime.extend::<u64>() << 32 | filetime.dwLowDateTime.extend::<u64>())
-        / FT_TO_SECS)
-        .cast_signed()
+    ((u64::from(filetime.dwHighDateTime) << 32 | u64::from(filetime.dwLowDateTime)) / FT_TO_SECS)
+        as i64
 }
 
 /// Convert an [`OffsetDateTime`] to a `SYSTEMTIME`.
@@ -74,13 +73,13 @@ fn filetime_to_secs(filetime: &FileTime) -> i64 {
 fn offset_to_systemtime(datetime: OffsetDateTime) -> SystemTime {
     let (_, month, day_of_month) = datetime.to_offset(UtcOffset::UTC).date().to_calendar_date();
     SystemTime {
-        wYear: datetime.year().cast_unsigned().truncate(),
-        wMonth: u8::from(month).extend(),
-        wDay: day_of_month.extend(),
+        wYear: (datetime.year() as u32).truncate(),
+        wMonth: u16::from(u8::from(month)),
+        wDay: u16::from(day_of_month),
         wDayOfWeek: 0, // ignored
-        wHour: datetime.hour().extend(),
-        wMinute: datetime.minute().extend(),
-        wSecond: datetime.second().extend(),
+        wHour: u16::from(datetime.hour()),
+        wMinute: u16::from(datetime.minute()),
+        wSecond: u16::from(datetime.second()),
         wMilliseconds: datetime.millisecond(),
     }
 }

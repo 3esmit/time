@@ -818,6 +818,98 @@ fn div_int_assign(#[case] mut duration: Duration, #[case] rhs: i32, #[case] expe
     assert_eq!(duration, expected);
 }
 
+macro_rules! unsigned_scalar_tests {
+    ($module:ident, $type:ty) => {
+        mod $module {
+            use time::Duration;
+
+            #[test]
+            fn multiplication_preserves_unsigned_magnitude() {
+                for factor in [0, 1, <$type>::MAX / 2, <$type>::MAX / 2 + 1, <$type>::MAX] {
+                    for sign in [-1, 1] {
+                        let original = Duration::nanoseconds(sign);
+                        let expected = Duration::nanoseconds(sign * i64::from(factor));
+                        assert_eq!(original * factor, expected, "factor {factor}");
+                        assert_eq!(factor * original, expected, "factor {factor}");
+                        let mut assigned = original;
+                        assigned *= factor;
+                        assert_eq!(assigned, expected, "factor {factor}");
+                    }
+                }
+            }
+
+            #[test]
+            fn division_preserves_unsigned_magnitude_and_truncation() {
+                for divisor in [1, <$type>::MAX / 2, <$type>::MAX / 2 + 1, <$type>::MAX] {
+                    for sign in [-1, 1] {
+                        let original = Duration::nanoseconds(sign * i64::from(divisor));
+                        let expected = Duration::nanoseconds(sign);
+                        assert_eq!(original / divisor, expected, "divisor {divisor}");
+                        let mut assigned = original;
+                        assigned /= divisor;
+                        assert_eq!(assigned, expected, "divisor {divisor}");
+                    }
+                }
+                let two: $type = 2;
+                assert_eq!(Duration::nanoseconds(5) / two, Duration::nanoseconds(2));
+                assert_eq!(Duration::nanoseconds(-5) / two, Duration::nanoseconds(-2));
+            }
+
+            #[test]
+            fn overflow_and_zero_divisors_still_panic() {
+                let zero: $type = 0;
+                let two: $type = 2;
+                for duration in [Duration::MIN, Duration::MAX] {
+                    assert_panic!(duration * two);
+                    assert_panic!(duration * <$type>::MAX);
+                    assert_panic!({
+                        let mut assigned = duration;
+                        assigned *= two;
+                    });
+                }
+                assert_panic!(Duration::SECOND / zero);
+                assert_panic!({
+                    let mut assigned = Duration::SECOND;
+                    assigned /= zero;
+                });
+            }
+        }
+    };
+}
+
+unsigned_scalar_tests!(unsigned_u8, u8);
+unsigned_scalar_tests!(unsigned_u16, u16);
+unsigned_scalar_tests!(unsigned_u32, u32);
+
+/// Generate independent boundary checks for each signed scalar width.
+macro_rules! signed_scalar_tests {
+    ($name:ident, $type:ty) => {
+        #[test]
+        fn $name() {
+            for scalar in [<$type>::MIN, -1, 0, 1, <$type>::MAX] {
+                let expected = Duration::nanoseconds(i64::from(scalar));
+                assert_eq!(Duration::NANOSECOND * scalar, expected);
+                assert_eq!(scalar * Duration::NANOSECOND, expected);
+                let mut assigned = Duration::NANOSECOND;
+                assigned *= scalar;
+                assert_eq!(assigned, expected);
+                if scalar != 0 {
+                    assert_eq!(expected / scalar, Duration::NANOSECOND);
+                    assigned /= scalar;
+                    assert_eq!(assigned, Duration::NANOSECOND);
+                }
+            }
+            let minus_one: $type = -1;
+            assert_panic!(Duration::MIN * minus_one);
+            assert_panic!(Duration::MIN / minus_one);
+        }
+    };
+}
+
+signed_scalar_tests!(signed_i8_boundaries, i8);
+signed_scalar_tests!(signed_i16_boundaries, i16);
+signed_scalar_tests!(signed_i32_boundaries, i32);
+
 #[rstest]
 #[case(1.seconds(), 0.5.seconds(), 2.)]
 #[case(2.seconds(), 0.25.seconds(), 8.)]

@@ -136,19 +136,19 @@ fn text<'a>(input: &'a [u8]) -> ParsedItem<'a, ()> {
 pub(crate) fn zone_literal(input: &[u8]) -> Option<ParsedItem<'_, i8>> {
     let [first, second, third, rest @ ..] = input else {
         const UT_VARIANTS: [u16; 4] = [
-            u16::from_ne_bytes([b'u', b't']),
-            u16::from_ne_bytes([b'u', b'T']),
-            u16::from_ne_bytes([b'U', b't']),
-            u16::from_ne_bytes([b'U', b'T']),
+            u16::from_ne_bytes(*b"ut"),
+            u16::from_ne_bytes(*b"uT"),
+            u16::from_ne_bytes(*b"Ut"),
+            u16::from_ne_bytes(*b"UT"),
         ];
 
         let [first, rest @ ..] = input else {
             return None;
         };
-        if let [second, rest @ ..] = rest
-            && UT_VARIANTS.contains(&u16::from_ne_bytes([*first, *second]))
-        {
-            return Some(ParsedItem(rest, 0));
+        if let [second, rest @ ..] = rest {
+            if UT_VARIANTS.contains(&u16::from_ne_bytes([*first, *second])) {
+                return Some(ParsedItem(rest, 0));
+            }
         }
         return (*first != b'j' && *first != b'J' && first.is_ascii_alphabetic())
             .then_some(ParsedItem(rest, 0));

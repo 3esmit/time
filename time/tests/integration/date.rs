@@ -643,6 +643,53 @@ fn midnight() {
 }
 
 #[test]
+fn calendar_conversions_remain_const() {
+    // Bind const expressions before passing them to older standard-library macros.
+    let minimum = const { Date::from_julian_day(Date::MIN.to_julian_day()) };
+    let maximum = const { Date::from_julian_day(Date::MAX.to_julian_day()) };
+    let negative_year = const { Date::from_julian_day(-1_930_999) };
+    let previous_year = const { Date::from_iso_week_date(2019, 1, Weekday::Monday) };
+    let next_year = const { Date::from_iso_week_date(2020, 53, Weekday::Sunday) };
+    let leap_day = const { date!(2020-02-01).replace_day(29) };
+    let sunday_week = const { date!(2020-12-31).sunday_based_week() };
+    let monday_week = const { date!(2020-12-31).monday_based_week() };
+    let month = const { Month::January.nth_prev(u8::MAX) };
+    let weekday = const { Weekday::Monday.nth_prev(u8::MAX) };
+
+    assert_eq!(minimum, Ok(Date::MIN));
+    assert_eq!(maximum, Ok(Date::MAX));
+    assert_eq!(negative_year, Ok(date!(-9999-01-01)));
+    assert_eq!(previous_year, Ok(date!(2018-12-31)));
+    assert_eq!(next_year, Ok(date!(2021-01-03)));
+    assert_eq!(leap_day, Ok(date!(2020-02-29)));
+    assert_eq!(sunday_week, 52);
+    assert_eq!(monday_week, 52);
+    assert_eq!(month, Month::October);
+    assert_eq!(weekday, Weekday::Friday);
+}
+
+#[test]
+fn calendar_conversion_round_trips_across_signed_year_boundaries() -> time::Result<()> {
+    for year in [
+        -999_999, -10_000, -9999, -401, -400, -100, -1, 0, 1, 100, 400, 9999, 10_000, 999_999,
+    ] {
+        for ordinal in 1..=util::days_in_year(year) {
+            let date = Date::from_ordinal_date(year, ordinal)?;
+            assert_eq!(Date::from_julian_day(date.to_julian_day()), Ok(date));
+            let (iso_year, week, weekday) = date.to_iso_week_date();
+            // ISO week years may lie one year outside the supported calendar range.
+            if (Date::MIN.year()..=Date::MAX.year()).contains(&iso_year) {
+                assert_eq!(Date::from_iso_week_date(iso_year, week, weekday), Ok(date));
+            }
+            assert_eq!(date.replace_day(date.day()), Ok(date));
+            assert!(date.sunday_based_week() <= 53);
+            assert!(date.monday_based_week() <= 53);
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn with_time() {
     assert_eq!(
         date!(1970-01-01).with_time(time!(0:00)),

@@ -102,7 +102,7 @@ where
 
 /// Consume one or two digits, returning the numerical value.
 #[inline]
-pub(crate) fn one_or_two_digits(input: &[u8]) -> Option<ParsedItem<'_, u8>> {
+pub(crate) const fn one_or_two_digits(input: &[u8]) -> Option<ParsedItem<'_, u8>> {
     match input {
         [a @ b'0'..=b'9', b @ b'0'..=b'9', remaining @ ..] => {
             let a = *a - b'0';

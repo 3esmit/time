@@ -4,7 +4,7 @@ use proc_macro::{Span, TokenStream, token_stream};
 use time_core::convert::*;
 
 use crate::Error;
-use crate::helpers::{consume_any_ident, consume_number, consume_punct};
+use crate::helpers::{consume_any_ident, consume_number, consume_punct, span_end, span_start};
 use crate::to_tokens::ToTokenStream;
 
 enum Period {
@@ -63,8 +63,8 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Time
             return Err(Error::InvalidComponent {
                 name: "hour",
                 value: hour.to_string(),
-                span_start: Some(hour_span.start()),
-                span_end: Some(period_span.unwrap_or_else(|| hour_span.end())),
+                span_start: Some(span_start(hour_span)),
+                span_end: Some(period_span.unwrap_or_else(|| span_end(hour_span))),
             });
         }
         (12, Period::Am) => 0,
@@ -77,22 +77,22 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Time
         Err(Error::InvalidComponent {
             name: "hour",
             value: hour.to_string(),
-            span_start: Some(hour_span.start()),
-            span_end: Some(period_span.unwrap_or_else(|| hour_span.end())),
+            span_start: Some(span_start(hour_span)),
+            span_end: Some(period_span.unwrap_or_else(|| span_end(hour_span))),
         })
     } else if minute >= Minute::per_t(Hour) {
         Err(Error::InvalidComponent {
             name: "minute",
             value: minute.to_string(),
-            span_start: Some(minute_span.start()),
-            span_end: Some(minute_span.end()),
+            span_start: Some(span_start(minute_span)),
+            span_end: Some(span_end(minute_span)),
         })
     } else if second >= Second::per_t(Minute) {
         Err(Error::InvalidComponent {
             name: "second",
             value: second.to_string(),
-            span_start: Some(second_span.start()),
-            span_end: Some(second_span.end()),
+            span_start: Some(span_start(second_span)),
+            span_end: Some(span_end(second_span)),
         })
     } else {
         Ok(Time {
