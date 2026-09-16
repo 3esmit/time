@@ -70,7 +70,7 @@ pub mod range_validated {
 /// [astronomical year numbering](https://en.wikipedia.org/wiki/Astronomical_year_numbering).
 ///
 /// ```rust
-/// # use time::util::is_leap_year;
+/// # use time_core::util::is_leap_year;
 /// assert!(!is_leap_year(1900));
 /// assert!(is_leap_year(2000));
 /// assert!(is_leap_year(2004));
@@ -92,7 +92,7 @@ pub const fn is_leap_year(year: i32) -> bool {
 /// The returned value will always be either 365 or 366.
 ///
 /// ```rust
-/// # use time::util::days_in_year;
+/// # use time_core::util::days_in_year;
 /// assert_eq!(days_in_year(1900), 365);
 /// assert_eq!(days_in_year(2000), 366);
 /// assert_eq!(days_in_year(2004), 366);
@@ -109,7 +109,7 @@ pub const fn days_in_year(year: i32) -> u16 {
 /// The returned value will always be either 52 or 53.
 ///
 /// ```rust
-/// # use time::util::weeks_in_year;
+/// # use time_core::util::weeks_in_year;
 /// assert_eq!(weeks_in_year(2019), 52);
 /// assert_eq!(weeks_in_year(2020), 53);
 /// ```

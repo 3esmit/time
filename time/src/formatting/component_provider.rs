@@ -33,6 +33,7 @@ impl Default for DateState {
     }
 }
 
+/// Generate stubs for components a provider does not supply.
 macro_rules! unimplemented_methods {
     ($(
         $(#[$meta:meta])*
@@ -49,6 +50,7 @@ macro_rules! unimplemented_methods {
     };
 }
 
+/// Forward component requests to an inner provider, with shared or explicit state.
 macro_rules! delegate_providers {
     (
         $target:ident {

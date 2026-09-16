@@ -31,6 +31,28 @@ fn checked_sub() {
 }
 
 #[test]
+fn subtraction_retains_checked_result_and_overflow_contract() {
+    let now = Instant::now();
+    for duration in [Duration::ZERO, Duration::SECOND, Duration::MAX] {
+        match now.0.checked_sub(duration.unsigned_abs()) {
+            Some(expected) => {
+                assert_eq!(now - duration, Instant(expected));
+                assert_eq!(now + -duration, Instant(expected));
+            }
+            None => {
+                assert_panic!(now - duration);
+                assert_panic!(now + -duration);
+            }
+        }
+    }
+    let duration = std::time::Duration::MAX;
+    match now.0.checked_sub(duration) {
+        Some(expected) => assert_eq!(now - duration, Instant(expected)),
+        None => assert_panic!(now - duration),
+    }
+}
+
+#[test]
 fn into_inner() {
     let now = Instant::now();
     assert_eq!(now.into_inner(), now.0);

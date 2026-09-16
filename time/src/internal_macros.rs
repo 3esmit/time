@@ -112,14 +112,14 @@ macro_rules! cascade {
         cascade!(@ordinal $ordinal);
         cascade!(@year $year);
 
-        let days_in_year = crate::util::range_validated::days_in_year($year).cast_signed();
+        let days_in_year = crate::util::range_validated::days_in_year($year) as i16;
         #[allow(unused_assignments)]
         if crate::hint::unlikely($ordinal > days_in_year) {
             $ordinal -= days_in_year;
             $year += 1;
         } else if crate::hint::unlikely($ordinal < 1) {
             $year -= 1;
-            $ordinal += crate::util::range_validated::days_in_year($year).cast_signed();
+            $ordinal += crate::util::range_validated::days_in_year($year) as i16;
         }
     };
 }
@@ -221,6 +221,11 @@ macro_rules! bug {
     };
 }
 
+pub(crate) use carry;
+pub(crate) use cascade;
+pub(crate) use const_try;
+pub(crate) use const_try_opt;
+pub(crate) use div_floor;
+pub(crate) use ensure_ranged;
 #[cfg(any(feature = "formatting", feature = "parsing"))]
 pub(crate) use {bug, try_likely_ok};
-pub(crate) use {carry, cascade, const_try, const_try_opt, div_floor, ensure_ranged};

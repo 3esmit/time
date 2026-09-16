@@ -188,8 +188,11 @@ impl Add<Duration> for Instant {
         if duration.is_positive() {
             Self(self.0 + duration.unsigned_abs())
         } else if duration.is_negative() {
-            #[expect(clippy::unchecked_time_subtraction)]
-            Self(self.0 - duration.unsigned_abs())
+            Self(
+                self.0
+                    .checked_sub(duration.unsigned_abs())
+                    .expect("overflow when subtracting duration from instant"),
+            )
         } else {
             debug_assert!(duration.is_zero());
             self
@@ -266,8 +269,11 @@ impl Sub<Duration> for Instant {
     #[inline]
     fn sub(self, duration: Duration) -> Self::Output {
         if duration.is_positive() {
-            #[expect(clippy::unchecked_time_subtraction)]
-            Self(self.0 - duration.unsigned_abs())
+            Self(
+                self.0
+                    .checked_sub(duration.unsigned_abs())
+                    .expect("overflow when subtracting duration from instant"),
+            )
         } else if duration.is_negative() {
             Self(self.0 + duration.unsigned_abs())
         } else {
@@ -299,8 +305,11 @@ impl Sub<StdDuration> for Instant {
     /// underlying data structure.
     #[inline]
     fn sub(self, duration: StdDuration) -> Self::Output {
-        #[expect(clippy::unchecked_time_subtraction)]
-        Self(self.0 - duration)
+        Self(
+            self.0
+                .checked_sub(duration)
+                .expect("overflow when subtracting duration from instant"),
+        )
     }
 }
 

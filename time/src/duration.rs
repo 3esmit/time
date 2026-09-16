@@ -9,7 +9,6 @@ use core::time::Duration as StdDuration;
 use std::time::SystemTime;
 
 use deranged::RangedI32;
-use num_conv::prelude::*;
 
 #[cfg(feature = "std")]
 #[expect(deprecated)]
@@ -1352,7 +1351,7 @@ impl TryFrom<StdDuration> for Duration {
                 .as_secs()
                 .try_into()
                 .map_err(|_| error::ConversionRange)?,
-            original.subsec_nanos().cast_signed(),
+            original.subsec_nanos() as i32,
         ))
     }
 }
@@ -1545,20 +1544,10 @@ impl SubAssign<Duration> for StdDuration {
     }
 }
 
-/// Given a value and whether it is signed, cast it to the signed version.
-macro_rules! cast_signed {
-    (@signed $val:ident) => {
-        $val
-    };
-    (@unsigned $val:ident) => {
-        $val.cast_signed()
-    };
-}
-
 /// Implement `Mul` (reflexively), `MulAssign`, `Div`, and `DivAssign` for `Duration` for various
-/// signed types.
+/// integer types. Each scalar must be losslessly representable as an `i128`.
 macro_rules! duration_mul_div_int {
-    ($(@$signedness:ident $type:ty),+ $(,)?) => {$(
+    ($($type:ty),+ $(,)?) => {$(
         impl Mul<$type> for Duration {
             type Output = Self;
 
@@ -1570,7 +1559,7 @@ macro_rules! duration_mul_div_int {
             fn mul(self, rhs: $type) -> Self::Output {
                 Self::nanoseconds_i128(
                     self.whole_nanoseconds()
-                        .checked_mul(cast_signed!(@$signedness rhs).extend::<i128>())
+                        .checked_mul(i128::from(rhs))
                         .expect("overflow when multiplying duration")
                 )
             }
@@ -1610,7 +1599,7 @@ macro_rules! duration_mul_div_int {
             #[track_caller]
             fn div(self, rhs: $type) -> Self::Output {
                 Self::nanoseconds_i128(
-                    self.whole_nanoseconds() / cast_signed!(@$signedness rhs).extend::<i128>()
+                    self.whole_nanoseconds() / i128::from(rhs)
                 )
             }
         }
@@ -1629,12 +1618,12 @@ macro_rules! duration_mul_div_int {
 }
 
 duration_mul_div_int! {
-    @signed i8,
-    @signed i16,
-    @signed i32,
-    @unsigned u8,
-    @unsigned u16,
-    @unsigned u32,
+    i8,
+    i16,
+    i32,
+    u8,
+    u16,
+    u32,
 }
 
 impl Mul<f32> for Duration {
@@ -1806,18 +1795,14 @@ impl PartialEq<Duration> for StdDuration {
 impl PartialOrd<StdDuration> for Duration {
     #[inline]
     fn partial_cmp(&self, rhs: &StdDuration) -> Option<Ordering> {
-        if rhs.as_secs() > i64::MAX.cast_unsigned() {
+        if rhs.as_secs() > (i64::MAX as u64) {
             return Some(Ordering::Less);
         }
 
         Some(
             self.seconds
-                .cmp(&rhs.as_secs().cast_signed())
-                .then_with(|| {
-                    self.nanoseconds
-                        .get()
-                        .cmp(&rhs.subsec_nanos().cast_signed())
-                }),
+                .cmp(&(rhs.as_secs() as i64))
+                .then_with(|| self.nanoseconds.get().cmp(&(rhs.subsec_nanos() as i32))),
         )
     }
 }

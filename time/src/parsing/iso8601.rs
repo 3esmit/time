@@ -289,23 +289,23 @@ impl<const CONFIG: EncodedConfig> Iso8601<CONFIG> {
                     .and_then(|parsed_item| {
                         parsed_item.consume_value(|hour| {
                             parsed.set_offset_hour(match sign {
-                                Sign::Negative => -hour.cast_signed(),
-                                Sign::Positive => hour.cast_signed(),
+                                Sign::Negative => -(hour as i8),
+                                Sign::Positive => hour as i8,
                             })
                         })
                     })
                     .ok_or(InvalidComponent("offset hour"))
             );
 
-            if extended_kind.maybe_extended()
-                && let Some(ParsedItem(new_input, ())) = ascii_char::<b':'>(input)
-            {
-                try_likely_ok!(
-                    extended_kind
-                        .coerce_extended()
-                        .ok_or(InvalidComponent("offset minute"))
-                );
-                input = new_input;
+            if extended_kind.maybe_extended() {
+                if let Some(ParsedItem(new_input, ())) = ascii_char::<b':'>(input) {
+                    try_likely_ok!(
+                        extended_kind
+                            .coerce_extended()
+                            .ok_or(InvalidComponent("offset minute"))
+                    );
+                    input = new_input;
+                }
             };
 
             match min(input) {
@@ -314,8 +314,8 @@ impl<const CONFIG: EncodedConfig> Iso8601<CONFIG> {
                     try_likely_ok!(
                         parsed
                             .set_offset_minute_signed(match sign {
-                                Sign::Negative => -min.cast_signed(),
-                                Sign::Positive => min.cast_signed(),
+                                Sign::Negative => -(min as i8),
+                                Sign::Positive => min as i8,
                             })
                             .ok_or(InvalidComponent("offset minute"))
                     );

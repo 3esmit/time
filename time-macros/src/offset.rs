@@ -4,7 +4,7 @@ use proc_macro::{Span, TokenStream, token_stream};
 use time_core::convert::*;
 
 use crate::Error;
-use crate::helpers::{consume_any_ident, consume_number, consume_punct};
+use crate::helpers::{consume_any_ident, consume_number, consume_punct, span_end, span_start};
 use crate::to_tokens::ToTokenStream;
 
 pub(crate) struct Offset {
@@ -56,22 +56,22 @@ pub(crate) fn parse(chars: &mut Peekable<token_stream::IntoIter>) -> Result<Offs
         Err(Error::InvalidComponent {
             name: "hour",
             value: hours.to_string(),
-            span_start: Some(hours_span.start()),
-            span_end: Some(hours_span.end()),
+            span_start: Some(span_start(hours_span)),
+            span_end: Some(span_end(hours_span)),
         })
     } else if minutes >= Minute::per_t(Hour) {
         Err(Error::InvalidComponent {
             name: "minute",
             value: minutes.to_string(),
-            span_start: Some(minutes_span.start()),
-            span_end: Some(minutes_span.end()),
+            span_start: Some(span_start(minutes_span)),
+            span_end: Some(span_end(minutes_span)),
         })
     } else if seconds >= Second::per_t(Minute) {
         Err(Error::InvalidComponent {
             name: "second",
             value: seconds.to_string(),
-            span_start: Some(seconds_span.start()),
-            span_end: Some(seconds_span.end()),
+            span_start: Some(span_start(seconds_span)),
+            span_end: Some(span_end(seconds_span)),
         })
     } else {
         Ok(Offset {

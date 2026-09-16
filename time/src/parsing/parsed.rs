@@ -323,14 +323,14 @@ impl Parsed {
                         self.set_year_century(value.truncate(), is_negative)
                     }
                     (false, modifier::YearRepr::LastTwo) => {
-                        self.set_year_last_two(value.cast_unsigned().truncate())
+                        self.set_year_last_two((value as u32).truncate())
                     }
                     (true, modifier::YearRepr::Full) => self.set_iso_year(value),
                     (true, modifier::YearRepr::Century) => {
                         self.set_iso_year_century(value.truncate(), is_negative)
                     }
                     (true, modifier::YearRepr::LastTwo) => {
-                        self.set_iso_year_last_two(value.cast_unsigned().truncate())
+                        self.set_iso_year_last_two((value as u32).truncate())
                     }
                 }
                 .ok_or(InvalidComponent("year"))?;
@@ -680,10 +680,10 @@ impl Parsed {
     )]
     #[inline]
     pub const fn set_offset_minute(&mut self, value: u8) -> Option<()> {
-        if value > i8::MAX.cast_unsigned() {
+        if value > (i8::MAX as u8) {
             None
         } else {
-            self.set_offset_minute_signed(value.cast_signed())
+            self.set_offset_minute_signed(value as i8)
         }
     }
 
@@ -695,10 +695,10 @@ impl Parsed {
     )]
     #[inline]
     pub const fn set_offset_second(&mut self, value: u8) -> Option<()> {
-        if value > i8::MAX.cast_unsigned() {
+        if value > (i8::MAX as u8) {
             None
         } else {
-            self.set_offset_second_signed(value.cast_signed())
+            self.set_offset_second_signed(value as i8)
         }
     }
 }
@@ -872,10 +872,10 @@ impl Parsed {
     )]
     #[inline]
     pub const fn with_offset_minute(self, value: u8) -> Option<Self> {
-        if value > i8::MAX.cast_unsigned() {
+        if value > (i8::MAX as u8) {
             None
         } else {
-            self.with_offset_minute_signed(value.cast_signed())
+            self.with_offset_minute_signed(value as i8)
         }
     }
 
@@ -894,10 +894,10 @@ impl Parsed {
     )]
     #[inline]
     pub const fn with_offset_second(self, value: u8) -> Option<Self> {
-        if value > i8::MAX.cast_unsigned() {
+        if value > (i8::MAX as u8) {
             None
         } else {
-            self.with_offset_second_signed(value.cast_signed())
+            self.with_offset_second_signed(value as i8)
         }
     }
 
@@ -960,9 +960,9 @@ impl TryFrom<Parsed> for Date {
             parsed.year_last_two(),
         ) {
             let year = if is_negative {
-                100 * century.extend::<i32>() - last_two.cast_signed().extend::<i32>()
+                100 * i32::from(century) - i32::from(last_two as i8)
             } else {
-                100 * century.extend::<i32>() + last_two.cast_signed().extend::<i32>()
+                100 * i32::from(century) + i32::from(last_two as i8)
             };
             parsed.year = OptionRangedI32::from(RangedI32::new(year));
         }
@@ -973,9 +973,9 @@ impl TryFrom<Parsed> for Date {
             parsed.iso_year_last_two(),
         ) {
             let iso_year = if is_negative {
-                100 * century.extend::<i32>() - last_two.cast_signed().extend::<i32>()
+                100 * i32::from(century) - i32::from(last_two as i8)
             } else {
-                100 * century.extend::<i32>() + last_two.cast_signed().extend::<i32>()
+                100 * i32::from(century) + i32::from(last_two as i8)
             };
             parsed.iso_year = OptionRangedI32::from(RangedI32::new(iso_year));
         }
@@ -990,17 +990,17 @@ impl TryFrom<Parsed> for Date {
             )?),
             (year, sunday_week_number, weekday) => Ok(Self::from_ordinal_date(
                 year,
-                (sunday_week_number.cast_signed().extend::<i16>() * 7
-                    + weekday.number_days_from_sunday().cast_signed().extend::<i16>()
+                (i16::from(sunday_week_number as i8) * 7
+                    + i16::from(weekday.number_days_from_sunday() as i8)
                     - adjustment(year)
-                    + 1).cast_unsigned(),
+                    + 1) as u16,
             )?),
             (year, monday_week_number, weekday) => Ok(Self::from_ordinal_date(
                 year,
-                (monday_week_number.cast_signed().extend::<i16>() * 7
-                    + weekday.number_days_from_monday().cast_signed().extend::<i16>()
+                (i16::from(monday_week_number as i8) * 7
+                    + i16::from(weekday.number_days_from_monday() as i8)
                     - adjustment(year)
-                    + 1).cast_unsigned(),
+                    + 1) as u16,
             )?),
             _ => Err(InsufficientInformation),
         }

@@ -33,7 +33,7 @@ where
             } else if !(0..=9999).contains(&year) {
                 return Err(error::Format::InvalidComponent("year"));
             } else {
-                bytes += format_number_pad_zero::<4>(output, year.cast_unsigned())?;
+                bytes += format_number_pad_zero::<4>(output, year as u32)?;
             }
             bytes += write_if(output, Iso8601::<CONFIG>::USE_SEPARATORS, b"-")?;
             bytes += format_number_pad_zero::<2>(output, u8::from(value.month(state)))?;
@@ -49,7 +49,7 @@ where
             } else if !(0..=9999).contains(&year) {
                 return Err(error::Format::InvalidComponent("year"));
             } else {
-                bytes += format_number_pad_zero::<4>(output, year.cast_unsigned())?;
+                bytes += format_number_pad_zero::<4>(output, year as u32)?;
             }
             bytes += write_if_else(output, Iso8601::<CONFIG>::USE_SEPARATORS, b"-W", b"W")?;
             bytes += format_number_pad_zero::<2>(output, value.iso_week_number(state))?;
@@ -66,7 +66,7 @@ where
             } else if !(0..=9999).contains(&year) {
                 return Err(error::Format::InvalidComponent("year"));
             } else {
-                bytes += format_number_pad_zero::<4>(output, year.cast_unsigned())?;
+                bytes += format_number_pad_zero::<4>(output, year as u32)?;
             }
             bytes += write_if(output, Iso8601::<CONFIG>::USE_SEPARATORS, b"-")?;
             bytes += format_number_pad_zero::<3>(output, value.ordinal(state))?;

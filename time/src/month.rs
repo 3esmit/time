@@ -156,7 +156,7 @@ impl Month {
     /// ```
     #[inline]
     pub const fn nth_prev(self, n: u8) -> Self {
-        match self as i8 - 1 - (n % 12).cast_signed() {
+        match self as i8 - 1 - (n % 12) as i8 {
             1 | -11 => February,
             2 | -10 => March,
             3 | -9 => April,

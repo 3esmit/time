@@ -161,6 +161,115 @@ fn rfc_2822() -> time::Result<()> {
 }
 
 #[test]
+fn rfc_2822_short_zone_literals() {
+    for zone in ["UT", "Ut", "uT", "ut", "A", "a", "Z", "z"] {
+        let input = format!("Sat, 02 Jan 2021 03:04:05 {zone}");
+        assert_eq!(
+            OffsetDateTime::parse(&input, &Rfc2822),
+            Ok(datetime!(2021-01-02 03:04:05 UTC)),
+            "zone {zone}"
+        );
+    }
+    for zone in ["", "J", "j", "U!", "UX", "1"] {
+        let input = format!("Sat, 02 Jan 2021 03:04:05 {zone}");
+        assert!(
+            OffsetDateTime::parse(&input, &Rfc2822).is_err(),
+            "zone {zone}"
+        );
+    }
+}
+
+#[test]
+fn rfc_2822_comment_depth_limit() {
+    for depth in [1, 2, 15, 30, 31, 32, 33, 64, 128] {
+        let input = format!(
+            "Sat, 02 Jan 2021 03:04:05 +0000 {}note{}",
+            "(".repeat(depth),
+            ")".repeat(depth)
+        );
+        if depth < 32 {
+            assert_eq!(
+                OffsetDateTime::parse(&input, &Rfc2822),
+                Ok(datetime!(2021-01-02 03:04:05 UTC))
+            );
+            assert_eq!(
+                UtcDateTime::parse(&input, &Rfc2822),
+                Ok(utc_datetime!(2021-01-02 03:04:05))
+            );
+            assert_eq!(Date::parse(&input, &Rfc2822), Ok(date!(2021-01-02)));
+            assert_eq!(
+                PrimitiveDateTime::parse(&input, &Rfc2822),
+                Ok(datetime!(2021-01-02 03:04:05))
+            );
+            assert_eq!(Time::parse(&input, &Rfc2822), Ok(time!(03:04:05)));
+            assert_eq!(UtcOffset::parse(&input, &Rfc2822), Ok(UtcOffset::UTC));
+        } else {
+            assert!(
+                OffsetDateTime::parse(&input, &Rfc2822).is_err(),
+                "OffsetDateTime accepted depth {depth}"
+            );
+            assert!(
+                UtcDateTime::parse(&input, &Rfc2822).is_err(),
+                "UtcDateTime accepted depth {depth}"
+            );
+            assert!(
+                Date::parse(&input, &Rfc2822).is_err(),
+                "Date accepted depth {depth}"
+            );
+            assert!(
+                PrimitiveDateTime::parse(&input, &Rfc2822).is_err(),
+                "PrimitiveDateTime accepted depth {depth}"
+            );
+            assert!(
+                Time::parse(&input, &Rfc2822).is_err(),
+                "Time accepted depth {depth}"
+            );
+            assert!(
+                UtcOffset::parse(&input, &Rfc2822).is_err(),
+                "UtcOffset accepted depth {depth}"
+            );
+        }
+    }
+}
+
+#[test]
+fn rfc_2822_sequential_and_escaped_comments_do_not_exhaust_depth() {
+    for comments in [" (note)".repeat(128), format!(" ({})", "\\(".repeat(128))] {
+        let input = format!("Sat, 02 Jan 2021 03:04:05 +0000{comments}");
+        assert_eq!(
+            OffsetDateTime::parse(&input, &Rfc2822),
+            Ok(datetime!(2021-01-02 03:04:05 UTC))
+        );
+    }
+}
+
+#[test]
+fn iso_8601_offset_separator_compatibility() {
+    // An extended date/time permits an offset without a colon; a basic date/time
+    // does not consume an offset colon. Preserve both existing parser behaviors.
+    for input in [
+        "20210102T030405+0607",
+        "2021-01-02T03:04:05+06:07",
+        "2021-01-02T03:04:05+0607",
+    ] {
+        assert_eq!(
+            OffsetDateTime::parse(input, &Iso8601::DEFAULT),
+            Ok(datetime!(2021-01-02 03:04:05 +06:07))
+        );
+    }
+    assert!(OffsetDateTime::parse("20210102T030405+06:07", &Iso8601::DEFAULT).is_err());
+    assert_eq!(
+        UtcOffset::parse("+06:07", &Iso8601::DEFAULT),
+        Ok(offset!(+06:07))
+    );
+    assert_eq!(
+        UtcOffset::parse("+0607", &Iso8601::DEFAULT),
+        Ok(offset!(+06:07))
+    );
+    assert_eq!(UtcOffset::parse("+06", &Iso8601::DEFAULT), Ok(offset!(+06)));
+}
+
+#[test]
 fn issue_661() -> time::Result<()> {
     assert_eq!(
         OffsetDateTime::parse("02 Jan 2021 03:04:05 +0607", &Rfc2822)?,
@@ -1658,13 +1767,13 @@ fn parse_components() -> time::Result<()> {
     let mut parsed = Parsed::new();
     let result = parsed.parse_component(
         b"abcdef",
-        Component::Ignore(modifier::Ignore::count(const { NonZero::new(3).unwrap() })),
+        Component::Ignore(modifier::Ignore::count(const { NonZero::new(3).expect("three is nonzero") })),
     )?;
     assert_eq!(result, b"def");
     let mut parsed = Parsed::new();
     let result = parsed.parse_component(
         b"abcdef",
-        Component::Ignore(modifier::Ignore::count(const { NonZero::new(7).unwrap() })),
+        Component::Ignore(modifier::Ignore::count(const { NonZero::new(7).expect("seven is nonzero") })),
     );
     assert!(matches!(
         result,

@@ -7,8 +7,6 @@ mod iso8601;
 use core::num::NonZero;
 use std::io;
 
-use num_conv::prelude::*;
-
 use self::component_provider::ComponentProvider;
 pub use self::formattable::Formattable;
 use crate::ext::DigitCount;
@@ -85,7 +83,7 @@ fn f64_10_pow_x(x: NonZero<u8>) -> f64 {
         7 => 10_000_000.,
         8 => 100_000_000.,
         9 => 1_000_000_000.,
-        x => 10_f64.powi(x.cast_signed().extend()),
+        x => 10_f64.powi(i32::from(x as i8)),
     }
 }
 
@@ -119,14 +117,14 @@ pub(crate) fn format_float(
                 value = f64::trunc(value * trunc_num) / trunc_num;
             }
 
-            let digits_after_decimal = digits_after_decimal.get().extend();
-            let width = digits_before_decimal.extend::<usize>() + 1 + digits_after_decimal;
+            let digits_after_decimal = usize::from(digits_after_decimal.get());
+            let width = usize::from(digits_before_decimal) + 1 + digits_after_decimal;
             write!(output, "{value:0>width$.digits_after_decimal$}")?;
             Ok(width)
         }
         None => {
             let value = value.trunc() as u64;
-            let width = digits_before_decimal.extend();
+            let width = usize::from(digits_before_decimal);
             write!(output, "{value:0>width$}")?;
             Ok(width)
         }
@@ -335,12 +333,10 @@ fn fmt_month(
 ) -> Result<usize, io::Error> {
     match repr {
         modifier::MonthRepr::Numerical => format_number::<2>(output, u8::from(month), padding),
-        modifier::MonthRepr::Long => {
-            write(output, MONTH_NAMES[u8::from(month).extend::<usize>() - 1])
-        }
+        modifier::MonthRepr::Long => write(output, MONTH_NAMES[usize::from(u8::from(month)) - 1]),
         // Safety: All month names are at least three bytes long.
         modifier::MonthRepr::Short => write(output, unsafe {
-            MONTH_NAMES[u8::from(month).extend::<usize>() - 1].get_unchecked(..3)
+            MONTH_NAMES[usize::from(u8::from(month)) - 1].get_unchecked(..3)
         }),
     }
 }
@@ -369,11 +365,11 @@ fn fmt_weekday(
     match repr {
         // Safety: All weekday names are at least three bytes long.
         modifier::WeekdayRepr::Short => write(output, unsafe {
-            WEEKDAY_NAMES[weekday.number_days_from_monday().extend::<usize>()].get_unchecked(..3)
+            WEEKDAY_NAMES[usize::from(weekday.number_days_from_monday())].get_unchecked(..3)
         }),
         modifier::WeekdayRepr::Long => write(
             output,
-            WEEKDAY_NAMES[weekday.number_days_from_monday().extend::<usize>()],
+            WEEKDAY_NAMES[usize::from(weekday.number_days_from_monday())],
         ),
         modifier::WeekdayRepr::Sunday => format_number::<1>(
             output,
@@ -518,21 +514,21 @@ fn fmt_subsecond(
     modifier::Subsecond { digits }: modifier::Subsecond,
 ) -> Result<usize, io::Error> {
     use modifier::SubsecondDigits::*;
-    if digits == Nine || (digits == OneOrMore && !nanos.is_multiple_of(10)) {
+    if digits == Nine || (digits == OneOrMore && nanos % 10 != 0) {
         format_number_pad_zero::<9>(output, nanos)
-    } else if digits == Eight || (digits == OneOrMore && !(nanos / 10).is_multiple_of(10)) {
+    } else if digits == Eight || (digits == OneOrMore && (nanos / 10) % 10 != 0) {
         format_number_pad_zero::<8>(output, nanos / 10)
-    } else if digits == Seven || (digits == OneOrMore && !(nanos / 100).is_multiple_of(10)) {
+    } else if digits == Seven || (digits == OneOrMore && (nanos / 100) % 10 != 0) {
         format_number_pad_zero::<7>(output, nanos / 100)
-    } else if digits == Six || (digits == OneOrMore && !(nanos / 1_000).is_multiple_of(10)) {
+    } else if digits == Six || (digits == OneOrMore && (nanos / 1_000) % 10 != 0) {
         format_number_pad_zero::<6>(output, nanos / 1_000)
-    } else if digits == Five || (digits == OneOrMore && !(nanos / 10_000).is_multiple_of(10)) {
+    } else if digits == Five || (digits == OneOrMore && (nanos / 10_000) % 10 != 0) {
         format_number_pad_zero::<5>(output, nanos / 10_000)
-    } else if digits == Four || (digits == OneOrMore && !(nanos / 100_000).is_multiple_of(10)) {
+    } else if digits == Four || (digits == OneOrMore && (nanos / 100_000) % 10 != 0) {
         format_number_pad_zero::<4>(output, nanos / 100_000)
-    } else if digits == Three || (digits == OneOrMore && !(nanos / 1_000_000).is_multiple_of(10)) {
+    } else if digits == Three || (digits == OneOrMore && (nanos / 1_000_000) % 10 != 0) {
         format_number_pad_zero::<3>(output, nanos / 1_000_000)
-    } else if digits == Two || (digits == OneOrMore && !(nanos / 10_000_000).is_multiple_of(10)) {
+    } else if digits == Two || (digits == OneOrMore && (nanos / 10_000_000) % 10 != 0) {
         format_number_pad_zero::<2>(output, nanos / 10_000_000)
     } else {
         format_number_pad_zero::<1>(output, nanos / 100_000_000)
