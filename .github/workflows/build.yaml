@@ -680,7 +680,6 @@ jobs:
         wait: [upload-coverage]
 
       - name: Wait for deploy docs
-        if: github.event_name == 'push' && github.repository == 'time-rs/time' && github.ref == format('refs/heads/{0}', github.event.repository.master_branch)
         wait: [trigger-deploy-docs]
 
       - name: Report publishing docs status
