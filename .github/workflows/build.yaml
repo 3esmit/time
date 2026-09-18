@@ -504,7 +504,7 @@ jobs:
 
       - name: Trigger deploy docs
         id: trigger-deploy-docs
-        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.master_branch)
+        if: github.event_name == 'push' && github.repository == 'time-rs/time' && github.ref == format('refs/heads/{0}', github.event.repository.master_branch)
         run: |
           gh workflow run --repo time-rs/time-rs.github.io build-website.yaml
         env:
